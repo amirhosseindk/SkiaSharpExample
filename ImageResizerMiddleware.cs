@@ -1,5 +1,4 @@
-﻿// ImageResizerMiddleware.cs
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Memory;
 using SkiaSharp;
 using System.Text;
 using System.Reflection;
@@ -17,6 +16,10 @@ namespace SkiaSharpExample
             public int quality;
             public string format;
             public string mode;
+            public string anchor;
+            public string crop;
+            public string scale;
+            public int rotate;
             public static string[] modes = new string[] { "pad", "max", "crop", "stretch" };
 
             public override string ToString()
@@ -27,7 +30,11 @@ namespace SkiaSharpExample
                 sb.Append($"autorotate: {autorotate}, ");
                 sb.Append($"quality: {quality}, ");
                 sb.Append($"format: {format}, ");
-                sb.Append($"mode: {mode}");
+                sb.Append($"mode: {mode}, ");
+                sb.Append($"anchor: {anchor}, ");
+                sb.Append($"crop: {crop}, ");
+                sb.Append($"scale: {scale}, ");
+                sb.Append($"rotate: {rotate}");
                 return sb.ToString();
             }
         }
@@ -129,6 +136,11 @@ namespace SkiaSharpExample
             resizeParams.mode = "max";
             if (h != 0 && w != 0 && query.ContainsKey("mode") && ResizeParams.modes.Any(m => query["mode"] == m)) resizeParams.mode = query["mode"];
 
+            if (query.ContainsKey("anchor")) resizeParams.anchor = query["anchor"];
+            if (query.ContainsKey("crop")) resizeParams.crop = query["crop"];
+            if (query.ContainsKey("scale")) resizeParams.scale = query["scale"];
+            if (query.ContainsKey("rotate")) int.TryParse(query["rotate"], out resizeParams.rotate);
+
             return resizeParams;
         }
 
@@ -147,8 +159,18 @@ namespace SkiaSharpExample
             var resized = new SKBitmap(width, height);
             using (var canvas = new SKCanvas(resized))
             {
-                canvas.Clear(SKColors.White);
-                canvas.DrawBitmap(original, new SKRect(0, 0, width, height));
+                canvas.Clear(SKColors.Transparent);
+
+                // Apply rotation if needed
+                if (resizeParams.rotate != 0)
+                {
+                    canvas.Translate(width / 2, height / 2);
+                    canvas.RotateDegrees(resizeParams.rotate);
+                    canvas.Translate(-width / 2, -height / 2);
+                }
+
+                var destRect = new SKRect(0, 0, width, height);
+                canvas.DrawBitmap(original, destRect);
             }
 
             return resized;
